@@ -1,0 +1,1 @@
+export interface userInterface { username : String , phone_number : Number , gender : String }
