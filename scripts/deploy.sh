@@ -5,7 +5,6 @@
 set -e
 
 APP_DIR="$HOME/spinwin-backend"
-NODE_ENV="${NODE_ENV:-production}"
 
 echo "🚀 Starting deployment..."
 
@@ -16,17 +15,20 @@ cd "$APP_DIR"
 echo "📥 Pulling latest code..."
 git pull origin main
 
-# Install production dependencies
+# Install all dependencies (devDependencies needed for TypeScript build)
 echo "📦 Installing dependencies..."
-npm ci --only=production
+npm ci
 
 # Build TypeScript
 echo "🔨 Building application..."
 npm run build
 
-# Reload PM2
+# Reload PM2 (graceful restart)
 echo "♻️ Restarting PM2..."
 pm2 reload ecosystem.config.cjs --env production
+
+# Save PM2 process list (survives reboot)
+pm2 save
 
 # Wait for application to start
 sleep 3
