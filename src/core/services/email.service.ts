@@ -3,11 +3,32 @@ import { config } from 'dotenv';
 config();
 
 // Postmark Email Configuration
-const client = new postmark.ServerClient(process.env.POSTMARK_SERVER_TOKEN || '');
+const postmarkToken = process.env.POSTMARK_SERVER_TOKEN || '';
 const fromEmail = process.env.POSTMARK_FROM_EMAIL || 'support@cryptospinwin.app';
+
+// Validate email configuration on startup
+if (!postmarkToken) {
+    console.error("⚠️  [EMAIL SERVICE] POSTMARK_SERVER_TOKEN is not set! Emails will NOT be sent.");
+} else {
+    console.log("✅ [EMAIL SERVICE] Postmark configured, sending from:", fromEmail);
+}
+
+const client = new postmark.ServerClient(postmarkToken);
 
 // Email sender function
 export const sendEmail = async (to: string, subject: string, html: string): Promise<boolean> => {
+    // Pre-flight validation
+    if (!postmarkToken) {
+        console.error("[EMAIL SERVICE] ❌ Cannot send email — POSTMARK_SERVER_TOKEN is not configured.");
+        console.error("[EMAIL SERVICE] Environment:", process.env.NODE_ENV || 'unknown');
+        return false;
+    }
+
+    if (!to || !subject) {
+        console.error("[EMAIL SERVICE] ❌ Missing required fields — to:", to, "subject:", subject);
+        return false;
+    }
+
     try {
         const result = await client.sendEmail({
             From: fromEmail,
@@ -18,10 +39,25 @@ export const sendEmail = async (to: string, subject: string, html: string): Prom
             MessageStream: 'outbound'
         });
 
-        console.log("Email sent successfully:", result.MessageID);
+        console.log("[EMAIL SERVICE] ✅ Email sent successfully to:", to, "| MessageID:", result.MessageID);
         return true;
-    } catch (error) {
-        console.error("Error sending email:", error);
+    } catch (error: any) {
+        console.error("[EMAIL SERVICE] ❌ Failed to send email to:", to);
+        console.error("[EMAIL SERVICE] Subject:", subject);
+        console.error("[EMAIL SERVICE] Environment:", process.env.NODE_ENV || 'unknown');
+
+        if (error?.statusCode) {
+            console.error("[EMAIL SERVICE] Status Code:", error.statusCode);
+        }
+        if (error?.code) {
+            console.error("[EMAIL SERVICE] Error Code:", error.code);
+        }
+        if (error?.message) {
+            console.error("[EMAIL SERVICE] Error Message:", error.message);
+        } else {
+            console.error("[EMAIL SERVICE] Error:", error);
+        }
+
         return false;
     }
 };
